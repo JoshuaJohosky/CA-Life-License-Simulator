@@ -1,0 +1,1944 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CA Life Exam Simulator</title>
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        margin: 0;
+        padding: 0;
+        background: #fafafa;
+        color: #333;
+    }
+    #simulator-container {
+        max-width: 450px; 
+        margin: 0 auto;
+        display: flex;
+        flex-direction: column;
+        min-height: 100vh;
+    }
+    #top-bar {
+        display: flex;
+        justify-content: space-between;
+        padding: 12px 15px;
+        background-color: #003366; /* Primary color */
+        color: white;
+        font-weight: bold;
+    }
+    #question-area {
+        flex-grow: 1;
+        padding: 20px;
+        line-height: 1.5;
+    }
+    #question-text {
+        font-size: 1.1em;
+        margin-bottom: 20px;
+        font-weight: 600;
+    }
+    #answer-form button {
+        display: block;
+        width: 100%;
+        padding: 12px;
+        margin: 10px 0;
+        font-size: 1em;
+        text-align: left;
+        background-color: #fff;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: background-color 0.2s;
+    }
+    #answer-form button:hover {
+        background-color: #e0e0e0;
+    }
+    #answer-form button.correct {
+        background-color: #4caf50;
+        color: white;
+        border-color: #4caf50;
+    }
+    #answer-form button.incorrect {
+        background-color: #f44336;
+        color: white;
+        border-color: #f44336;
+    }
+    #explanation-area {
+        padding: 15px;
+        background-color: #e0f7fa; 
+        border-top: 2px solid #00bcd4;
+        display: none;
+    }
+    #explanation-text {
+        font-size: 0.9em;
+        font-style: italic;
+    }
+    #action-bar {
+        display: flex;
+        justify-content: space-between;
+        padding: 15px;
+        position: sticky;
+        bottom: 0;
+        background-color: #fff;
+        border-top: 1px solid #ccc;
+    }
+    #action-bar button {
+        flex-grow: 1;
+        margin: 0 5px;
+        padding: 10px 5px;
+        font-size: 0.9em;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        background-color: #7986cb;
+        color: white;
+    }
+    #action-bar button:hover {
+        background-color: #5c6bc0;
+    }
+    #flag-button {
+        background-color: #ffb74d;
+    }
+    #flag-button.flagged {
+        background-color: #ffa000;
+        font-weight: bold;
+    }
+    #next-button {
+        background-color: #4caf50;
+    }
+</style>
+</head>
+<body>
+
+<div id="simulator-container">
+    <header id="top-bar">
+        <span id="timer">00:00</span>
+        <span id="question-counter">Q 1 / 121</span>
+    </header>
+
+    <main id="question-area">
+        <p id="question-text"></p>
+        <form id="answer-form"></form>
+    </main>
+
+    <div id="explanation-area">
+        <p id="explanation-text"></p>
+    </div>
+
+    <footer id="action-bar">
+        <button id="flag-button">Flag for Review</button>
+        <button id="explanation-toggle">Show Explanation</button>
+        <button id="next-button" disabled>Next Question</button>
+    </footer>
+</div>
+
+<script>
+/*
+ * ====================================================================
+ * | 1. FULL 121-QUESTION DATA ARRAY (VERIFIED)
+ * ====================================================================
+ */
+let questionBank = [
+    {
+        "id": 1,
+        "domain": "Insurance Principles",
+        "text": "Which statement best describes the principle of indemnity as used in most insurance contracts?",
+        "choices": [
+            "It restores an insured to the same financial position they were in before a loss, preventing profit from a claim.",
+            "It pays a predetermined amount regardless of the actual loss.",
+            "It allows the insured to profit from a claim.",
+            "It guarantees a fixed interest rate on cash value."
+        ],
+        "correct": 0,
+        "explanation": "Indemnity restores financial position; life insurance is an exception (valued contract) because it pays a predetermined amount."
+    },
+    {
+        "id": 2,
+        "domain": "Company/Contract Types",
+        "text": "A mutual insurance company differs from a stock company because the mutual:",
+        "choices": [
+            "Is owned by policyowners and may distribute divisible surplus as policy dividends.",
+            "Is owned by shareholders and issues non-participating contracts.",
+            "Is regulated by the SEC.",
+            "Does not require a license to transact insurance."
+        ],
+        "correct": 0,
+        "explanation": "Mutuals are owned by policy owners and may issue participating contracts with dividends as surplus refunds."
+    },
+    {
+        "id": 3,
+        "domain": "Policy Provisions",
+        "text": "An incontestable clause in a life policy typically prevents the company from contesting statements after:",
+        "choices": [
+            "two years from issue, except for certain serious exceptions like impersonation or lack of insurable interest.",
+            "one year from issue, with no exceptions.",
+            "five years from issue.",
+            "the first premium is paid."
+        ],
+        "correct": 0,
+        "explanation": "Standard contestable period is two years; exceptions allow later challenge in limited cases."
+    },
+    {
+        "id": 4,
+        "domain": "Application/Underwriting",
+        "text": "Which receipt gives immediate, guaranteed coverage until the insurer formally rejects the application?",
+        "choices": [
+            "Binding (unconditional) receipt.",
+            "Conditional receipt.",
+            "Approval receipt.",
+            "Temporary insurance agreement."
+        ],
+        "correct": 0,
+        "explanation": "Binding receipts create immediate coverage; conditional receipts make coverage effective only if applicant is later found insurable under company standards."
+    },
+    {
+        "id": 5,
+        "domain": "Taxation/Policy Proceeds",
+        "text": "A policy owner uses the cash surrender option at termination. Tax treatment on amounts received in excess of premiums paid is:",
+        "choices": [
+            "taxable as ordinary income.",
+            "taxable as capital gains.",
+            "tax-free.",
+            "subject to a 10% penalty."
+        ],
+        "correct": 0,
+        "explanation": "Cash surrender proceeds beyond cost basis are taxed as ordinary income."
+    },
+    {
+        "id": 6,
+        "domain": "Policy Provisions",
+        "text": "Which nonforfeiture option uses cash value to buy a reduced paid-up whole life policy with a smaller face amount?",
+        "choices": [
+            "Reduced paid-up.",
+            "Extended term.",
+            "Cash surrender.",
+            "Paid-up additions."
+        ],
+        "correct": 0,
+        "explanation": "Cash value purchases a single-premium, paid-up policy for a reduced benefit."
+    },
+    {
+        "id": 7,
+        "domain": "Policy Types",
+        "text": "Universal life Option B (increasing) means the death benefit equals:",
+        "choices": [
+            "the face amount plus the cash value.",
+            "the face amount only.",
+            "the face amount minus the cash value.",
+            "the cash value only."
+        ],
+        "correct": 0,
+        "explanation": "Option B increases the death benefit by adding accumulated cash value to the face amount."
+    },
+    {
+        "id": 8,
+        "domain": "Policy Provisions",
+        "text": "Which dividend option from a participating policy increases death benefit and cash value without further insurability proof?",
+        "choices": [
+            "Paid-up permanent additions.",
+            "Cash payout.",
+            "One-year term.",
+            "Reduce premium."
+        ],
+        "correct": 0,
+        "explanation": "Paid-up additions buy small amounts of paid-up life, increasing CV and DB."
+    },
+    {
+        "id": 9,
+        "domain": "Producer Duties/Ethics",
+        "text": "A producer acting as field underwriter must provide which items at sale to the applicant?",
+        "choices": [
+            "a Buyer’s Guide and a Policy Summary.",
+            "a copy of the agent's license and commission schedule.",
+            "an entire copy of the application only.",
+            "a viatical settlement form."
+        ],
+        "correct": 0,
+        "explanation": "Agent responsibilities include proper solicitation and delivering buyer materials when required."
+    },
+    {
+        "id": 10,
+        "domain": "Policy Provisions",
+        "text": "If an owner designates an irrevocable beneficiary, changing that beneficiary later requires:",
+        "choices": [
+            "the beneficiary’s written consent.",
+            "the insurer's approval only.",
+            "a notarized signature from the owner.",
+            "proof of insurable interest."
+        ],
+        "correct": 0,
+        "explanation": "Irrevocable designations cannot be changed without the beneficiary’s permission and they limit owner actions like loans or assignments."
+    },
+    {
+        "id": 11,
+        "domain": "Riders/Provisions",
+        "text": "An accelerated benefits provision typically allows a policyowner to access part of the death benefit if:",
+        "choices": [
+            "the insured is terminally ill with a limited life expectancy (commonly 12–24 months).",
+            "the policy has accumulated sufficient cash value.",
+            "the policy is more than 5 years old.",
+            "the owner simply requests the cash."
+        ],
+        "correct": 0,
+        "explanation": "Accelerated benefits let owners receive tax-free early payment for terminal illness, reducing final proceeds."
+    },
+    {
+        "id": 12,
+        "domain": "Annuities",
+        "text": "Which annuity type begins paying income within 12 months of purchase and is usually bought with a single premium?",
+        "choices": [
+            "Immediate (single premium immediate annuity).",
+            "Deferred annuity.",
+            "Variable annuity.",
+            "Equity indexed annuity."
+        ],
+        "correct": 0,
+        "explanation": "SPIAs start payout quickly and are funded with a lump sum."
+    },
+    {
+        "id": 13,
+        "domain": "Contract Law",
+        "text": "The doctrine that ambiguous contract language is interpreted in favor of the insured is called:",
+        "choices": [
+            "the rule regarding ambiguities under a contract of adhesion.",
+            "the Parol Evidence Rule.",
+            "the principle of Utmost Good Faith.",
+            "the doctrine of representation."
+        ],
+        "correct": 0,
+        "explanation": "Insurance contracts are adhesion; ambiguous terms favor insured reasonable expectations."
+    },
+    {
+        "id": 14,
+        "domain": "Group Insurance",
+        "text": "A conversion privilege in group term life allows a terminated employee to:",
+        "choices": [
+            "convert group term coverage to an individual permanent policy without proof of insurability during the conversion period (typically 31 days).",
+            "cash out the group policy's face amount.",
+            "convert group coverage to a fixed annuity.",
+            "transfer their group coverage to a new employer."
+        ],
+        "correct": 0,
+        "explanation": "The conversion right ensures portability without new underwriting within the statutory window."
+    },
+    {
+        "id": 15,
+        "domain": "Policy Provisions",
+        "text": "Which policy provision prevents lapse by automatically taking a loan from cash value to pay an overdue premium?",
+        "choices": [
+            "Automatic premium loan provision.",
+            "Reinstatement clause.",
+            "Extended term provision.",
+            "Waiver of premium rider."
+        ],
+        "correct": 0,
+        "explanation": "APL lets insurer take policy loan at end of grace period to keep policy in force."
+    },
+    {
+        "id": 16,
+        "domain": "Policy Provisions",
+        "text": "Backdating a policy to get a lower premium age is generally limited to how long by state law?",
+        "choices": [
+            "typically up to six months.",
+            "one year.",
+            "three months.",
+            "it is never allowed."
+        ],
+        "correct": 0,
+        "explanation": "Backdating is allowed to adjust attained age for premium but state laws commonly cap it (example limit six months)."
+    },
+    {
+        "id": 17,
+        "domain": "Policy Provisions",
+        "text": "The five dividend options commonly summarized as CRAPO include which of the following as an option?",
+        "choices": [
+            "accumulate at interest.",
+            "extended term.",
+            "reduced premium loan.",
+            "cash surrender."
+        ],
+        "correct": 0,
+        "explanation": "CRAPO stands for Cash, Reduced premium, Accumulate at interest, Paid-up additions, One-year term."
+    },
+    {
+        "id": 18,
+        "domain": "Contract Law",
+        "text": "Which element is NOT required for a valid insurance contract: competent parties, legal purpose, offer and acceptance, or a witness signature?",
+        "choices": [
+            "a witness signature is not an essential element.",
+            "competent parties.",
+            "legal purpose.",
+            "offer and acceptance (and consideration)."
+        ],
+        "correct": 0,
+        "explanation": "Essential elements are competent parties, legal purpose, offer and acceptance, and consideration; witness signature is not required for validity."
+    },
+    {
+        "id": 19,
+        "domain": "Settlements",
+        "text": "A viatical settlement generally applies to an insured who is:",
+        "choices": [
+            "chronically or terminally ill and can sell an existing life policy for cash less than death benefit but greater than cash surrender value.",
+            "leaving their job and converting group coverage.",
+            "only interested in selling a variable life policy.",
+            "retiring and converting an annuity."
+        ],
+        "correct": 0,
+        "explanation": "Viatical deals are for terminal/chronic cases meeting ADL or terminal timeframe criteria."
+    },
+    {
+        "id": 20,
+        "domain": "Settlements",
+        "text": "Which settlement option pays the beneficiary the largest periodic income but ends payments at the beneficiary’s death with no refund?",
+        "choices": [
+            "Straight life (single/pure life income).",
+            "Life income with period certain.",
+            "Interest only.",
+            "Fixed period option."
+        ],
+        "correct": 0,
+        "explanation": "Straight life maximizes periodic amount but carries survivorship risk with no refund on early death."
+    },
+    {
+        "id": 21,
+        "domain": "Policy Provisions",
+        "text": "If an insured commits suicide, a life insurance policy will typically pay the full death benefit only if:",
+        "choices": [
+            "the death occurs more than two years after the policy's issue date.",
+            "the death occurs within the first year.",
+            "the death occurs regardless of the policy's issue date.",
+            "the death is accidental."
+        ],
+        "correct": 0,
+        "explanation": "The standard suicide clause excludes payment if death occurs within the first two years, but usually refunds premiums paid."
+    },
+    {
+        "id": 22,
+        "domain": "Policy Provisions",
+        "text": "The policy provision that protects the policy owner against an unintentional lapse in payment is the:",
+        "choices": [
+            "grace period.",
+            "incontestable clause.",
+            "reinstatement clause.",
+            "policy loan provision."
+        ],
+        "correct": 0,
+        "explanation": "The grace period provides 30 or 31 days after the premium due date during which the policy remains in force."
+    },
+    {
+        "id": 23,
+        "domain": "Policy Provisions",
+        "text": "The Automatic Premium Loan (APL) provision is only effective when:",
+        "choices": [
+            "the policy has accumulated sufficient cash value to cover the premium.",
+            "the owner makes a written request.",
+            "the grace period has ended.",
+            "the insured becomes disabled."
+        ],
+        "correct": 0,
+        "explanation": "APL is a rider that prevents lapse by automatically taking a loan against the policy's cash value."
+    },
+    {
+        "id": 24,
+        "domain": "Policy Provisions",
+        "text": "A primary beneficiary dies before the insured. If the policy has no contingent beneficiary, the death benefit proceeds will go to:",
+        "choices": [
+            "the insured's estate.",
+            "the primary beneficiary's estate.",
+            "the insurer.",
+            "the state guaranty association."
+        ],
+        "correct": 0,
+        "explanation": "When both primary and contingent beneficiaries predecease the insured, the proceeds typically revert to the estate."
+    },
+    {
+        "id": 25,
+        "domain": "Policy Provisions",
+        "text": "The Time of Payment of Claims provision requires an insurer to pay a death claim within a specified period after receiving proof of loss, which is usually:",
+        "choices": [
+            "immediately upon receipt and approval of the due proof of death.",
+            "30 days after the death certificate is received.",
+            "60 days after the policy is contested.",
+            "within 6 months of the claim filing date."
+        ],
+        "correct": 0,
+        "explanation": "While state laws vary, immediate payment is the general standard after validating the claim."
+    },
+    {
+        "id": 26,
+        "domain": "Policy Provisions",
+        "text": "The legal contract doctrine stating that the policy and a copy of the application constitute the entire agreement between the insurer and the insured is called the:",
+        "choices": [
+            "Entire Contract clause.",
+            "Insuring Clause.",
+            "Parol Evidence Rule.",
+            "Legal Purpose doctrine."
+        ],
+        "correct": 0,
+        "explanation": "The Entire Contract clause prevents the use of external documents or communications to modify the contract."
+    },
+    {
+        "id": 27,
+        "domain": "Policy Provisions",
+        "text": "If a policyowner elects the Extended Term nonforfeiture option, the cash value is used to purchase:",
+        "choices": [
+            "a term policy with the same face amount as the original policy for as long a term as the cash value allows.",
+            "a reduced paid-up whole life policy.",
+            "a life annuity.",
+            "cash immediately."
+        ],
+        "correct": 0,
+        "explanation": "Extended Term keeps the death benefit the same but converts the policy duration to a limited term."
+    },
+    {
+        "id": 28,
+        "domain": "Policy Provisions",
+        "text": "Which clause specifies that the insurance company promises to pay the policy’s death benefit to a named beneficiary?",
+        "choices": [
+            "Insuring Clause.",
+            "Entire Contract clause.",
+            "Consideration clause.",
+            "Assignment clause."
+        ],
+        "correct": 0,
+        "explanation": "The Insuring Clause defines the parties, the premium, the amount of coverage, and the promise to pay."
+    },
+    {
+        "id": 29,
+        "domain": "Policy Provisions",
+        "text": "The process of a policy loan reducing the amount of the death benefit paid to the beneficiary is an example of:",
+        "choices": [
+            "a collateral assignment.",
+            "a loan lien.",
+            "a policy surrender.",
+            "an absolute assignment."
+        ],
+        "correct": 0,
+        "explanation": "While policy loans are technically not assignments, they reduce the net death benefit by the amount of the outstanding loan plus interest."
+    },
+    {
+        "id": 30,
+        "domain": "Policy Provisions",
+        "text": "If a policyowner fails to make a scheduled premium payment, the first step the insurer must take is:",
+        "choices": [
+            "apply the premium to be paid using the policy's grace period provision.",
+            "activate the Automatic Premium Loan (APL) provision.",
+            "surrender the policy for its cash value.",
+            "notify the beneficiary."
+        ],
+        "correct": 0,
+        "explanation": "The grace period is the mandatory first step before a policy can lapse or a nonforfeiture option is activated."
+    },
+    {
+        "id": 31,
+        "domain": "Policy Provisions",
+        "text": "What is the primary difference between a revocable and an irrevocable beneficiary designation?",
+        "choices": [
+            "A revocable beneficiary can be changed by the owner at any time; an irrevocable beneficiary requires their consent to be changed.",
+            "An irrevocable beneficiary is always a minor.",
+            "A revocable beneficiary has a vested right in the policy.",
+            "The revocable beneficiary receives the funds tax-free."
+        ],
+        "correct": 0,
+        "explanation": "Irrevocable status gives the beneficiary a vested right in the policy's value and benefit."
+    },
+    {
+        "id": 32,
+        "domain": "Policy Provisions",
+        "text": "The misstatement of age provision allows the insurer to adjust the death benefit to:",
+        "choices": [
+            "the amount the premium would have purchased at the correct age.",
+            "void the policy entirely.",
+            "refund all premiums paid.",
+            "charge the owner the difference in premiums."
+        ],
+        "correct": 0,
+        "explanation": "This provision prevents the contract from being voided but corrects the benefit based on actuarial fairness."
+    },
+    {
+        "id": 33,
+        "domain": "Policy Provisions",
+        "text": "The policy provision that allows the owner to change the beneficiary, surrender the policy, or take out a loan is known as the:",
+        "choices": [
+            "Rights of Policy Ownership (or Owner's Rights).",
+            "Incontestable Clause.",
+            "Entire Contract Clause.",
+            "Insuring Clause."
+        ],
+        "correct": 0,
+        "explanation": "These are the fundamental contractual rights held by the policy owner."
+    },
+    {
+        "id": 34,
+        "domain": "Policy Provisions",
+        "text": "A policy that lapses due to nonpayment can typically be reinstated by the insured within a specified period (usually 3 or 5 years) by:",
+        "choices": [
+            "paying all back premiums, interest, and proving insurability.",
+            "paying only the current premium due.",
+            "submitting a new application without payment.",
+            "contacting the state insurance department."
+        ],
+        "correct": 0,
+        "explanation": "Reinstatement requires the policy owner to 'make the insurer whole' and pass new underwriting."
+    },
+    {
+        "id": 35,
+        "domain": "Policy Provisions",
+        "text": "The policy provision defining how and when the policy owner can borrow money against the policy's cash value is the:",
+        "choices": [
+            "Policy Loan Provision.",
+            "Assignment Provision.",
+            "Nonforfeiture Provision.",
+            "Waiver of Premium Rider."
+        ],
+        "correct": 0,
+        "explanation": "This specifies the interest rate, maximum loan amount (usually up to the cash surrender value), and repayment terms."
+    },
+    {
+        "id": 36,
+        "domain": "Policy Provisions",
+        "text": "The purpose of the free-look period (or right to examine provision) is to allow the policy owner to:",
+        "choices": [
+            "return the policy for a full refund of premiums within a specified number of days (usually 10 or more) after delivery.",
+            "take a policy loan immediately.",
+            "change the beneficiary without consent.",
+            "contest the policy's validity."
+        ],
+        "correct": 0,
+        "explanation": "The free-look period allows the owner to review the actual contract without financial penalty."
+    },
+    {
+        "id": 37,
+        "domain": "Policy Provisions",
+        "text": "If the owner chooses the Reduced Paid-Up nonforfeiture option, the new policy's cash value will:",
+        "choices": [
+            "continue to grow and is available for future loans or surrender.",
+            "remain fixed and cease growing.",
+            "immediately be paid out as a loan.",
+            "be transferred to a deferred annuity."
+        ],
+        "correct": 0,
+        "explanation": "The policy is fully paid up, and the cash value continues its standard growth."
+    },
+    {
+        "id": 38,
+        "domain": "Riders/Provisions",
+        "text": "What is the effect of having an accidental death rider (double indemnity) on a life insurance policy?",
+        "choices": [
+            "It pays an extra death benefit if the insured's death is the result of an accident, subject to policy exclusions.",
+            "It doubles the face amount for death by any cause.",
+            "It waives the premium if the death is accidental.",
+            "It provides accelerated benefits for terminal illness."
+        ],
+        "correct": 0,
+        "explanation": "The rider effectively doubles or triples the face amount only if specific accidental conditions are met."
+    },
+    {
+        "id": 39,
+        "domain": "Policy Provisions",
+        "text": "If a life insurance policy is assigned as collateral for a bank loan, this is a(n):",
+        "choices": [
+            "collateral assignment.",
+            "absolute assignment.",
+            "nonforfeiture option.",
+            "policy surrender."
+        ],
+        "correct": 0,
+        "explanation": "A collateral assignment is temporary and transfers only enough rights to secure the loan."
+    },
+    {
+        "id": 40,
+        "domain": "Policy Provisions",
+        "text": "When a policyowner elects the cash option for policy dividends, the dividend amount is:",
+        "choices": [
+            "paid out in cash to the policyowner, and is generally not taxable.",
+            "always taxable as ordinary income.",
+            "automatically used to purchase paid-up additions.",
+            "subject to a 10% tax penalty."
+        ],
+        "correct": 0,
+        "explanation": "Dividends are considered a return of unused premium and are therefore usually tax-free up to the amount of premium paid."
+    },
+    {
+        "id": 41,
+        "domain": "Policy Provisions",
+        "text": "Which nonforfeiture option provides the longest period of protection?",
+        "choices": [
+            "Extended Term Option.",
+            "Reduced Paid-Up Option.",
+            "Cash Surrender Option.",
+            "Premium Loan Option."
+        ],
+        "correct": 0,
+        "explanation": "While the face amount is maintained, the term of protection is maximized until the cash value is depleted."
+    },
+    {
+        "id": 42,
+        "domain": "Policy Provisions",
+        "text": "A policy loan, if not repaid by the insured, will cause the death benefit to be:",
+        "choices": [
+            "reduced by the amount of the outstanding loan plus any accrued interest.",
+            "increased by the amount of the loan.",
+            "subject to a tax penalty.",
+            "paid to the beneficiary only after the loan is repaid by the estate."
+        ],
+        "correct": 0,
+        "explanation": "The loan and interest are a lien against the policy proceeds at death."
+    },
+    {
+        "id": 43,
+        "domain": "Policy Provisions",
+        "text": "The standard contestable period for a life insurance policy in California is:",
+        "choices": [
+            "two years from the date of issue.",
+            "one year from the date of issue.",
+            "five years from the date of issue.",
+            "the entire life of the policy."
+        ],
+        "correct": 0,
+        "explanation": "The insurer can challenge the validity of the contract based on material misrepresentations within this two-year period."
+    },
+    {
+        "id": 44,
+        "domain": "Riders/Provisions",
+        "text": "If an insured becomes totally disabled, which rider would waive future premiums, keeping the policy in force?",
+        "choices": [
+            "Waiver of Premium Rider.",
+            "Accidental Death Rider.",
+            "Guaranteed Insurability Rider.",
+            "Accelerated Benefits Rider."
+        ],
+        "correct": 0,
+        "explanation": "This rider is activated by total and permanent disability and maintains the policy without payment."
+    },
+    {
+        "id": 45,
+        "domain": "Policy Provisions",
+        "text": "The reinstatement clause requires that the insurer apply or reject the reinstatement request within:",
+        "choices": [
+            "a reasonable period of time.",
+            "30 days.",
+            "6 months.",
+            "1 year."
+        ],
+        "correct": 0,
+        "explanation": "While not always a specific number of days, the insurer cannot unduly delay the reinstatement process."
+    },
+    {
+        "id": 46,
+        "domain": "Policy Provisions",
+        "text": "The primary purpose of the Aviation Exclusion is to:",
+        "choices": [
+            "exclude coverage for death resulting from certain types of flying, such as private or military aircraft operations.",
+            "exclude all deaths involving air travel.",
+            "provide double indemnity for commercial flights.",
+            "limit cash value growth for pilots."
+        ],
+        "correct": 0,
+        "explanation": "This exclusion limits the insurer's exposure to high-risk activities."
+    },
+    {
+        "id": 47,
+        "domain": "Policy Provisions",
+        "text": "A common disaster clause is designed to address simultaneous deaths and ensure that the death benefit goes to:",
+        "choices": [
+            "the contingent beneficiaries or the policy owner's estate, avoiding probate for the primary beneficiary.",
+            "the primary beneficiary's estate.",
+            "the insurer's general account.",
+            "the state's unclaimed property fund."
+        ],
+        "correct": 0,
+        "explanation": "It assumes the primary beneficiary died first, protecting the proceeds from double taxation."
+    },
+    {
+        "id": 48,
+        "domain": "Policy Provisions",
+        "text": "Which statement is true regarding dividend options in a participating policy?",
+        "choices": [
+            "Dividends are not guaranteed and represent a refund of premium overcharge.",
+            "Dividends are guaranteed annually.",
+            "Dividends are taxable as ordinary income.",
+            "Dividends must be used to purchase paid-up additions."
+        ],
+        "correct": 0,
+        "explanation": "Dividends are only paid if the actual cost of insurance is lower than the projected premium."
+    },
+    {
+        "id": 49,
+        "domain": "Riders/Provisions",
+        "text": "A guaranteed insurability rider allows the insured to purchase:",
+        "choices": [
+            "additional amounts of insurance at specified future dates without proving insurability.",
+            "life insurance at any time without paying a premium.",
+            "a different type of policy without underwriting.",
+            "an increased death benefit only due to inflation."
+        ],
+        "correct": 0,
+        "explanation": "This option is valuable for young policyowners whose insurance needs will likely increase."
+    },
+    {
+        "id": 50,
+        "domain": "Policy Provisions",
+        "text": "The nonforfeiture option that provides the shortest duration of coverage but the highest face amount is:",
+        "choices": [
+            "Extended Term.",
+            "Reduced Paid-Up.",
+            "Cash Surrender.",
+            "Automatic Premium Loan."
+        ],
+        "correct": 0,
+        "explanation": "It uses the cash value to purchase a single premium term policy for the same death benefit."
+    },
+    {
+        "id": 51,
+        "domain": "Annuities/Retirement",
+        "text": "Which annuity payment option provides the highest possible income payout but ceases payments entirely upon the annuitant's death?",
+        "choices": [
+            "Straight Life Income (Pure Life).",
+            "Life Income with Period Certain.",
+            "Joint and Survivor Annuity.",
+            "Life Annuity with Installment Refund."
+        ],
+        "correct": 0,
+        "explanation": "This option maximizes the monthly payment because it carries the most risk for the insurer (no refund is guaranteed)."
+    },
+    {
+        "id": 52,
+        "domain": "Annuities/Retirement",
+        "text": "An annuity funded with a single premium that begins paying out income within 12 months of purchase is known as a(n):",
+        "choices": [
+            "Single Premium Immediate Annuity (SPIA).",
+            "Single Premium Deferred Annuity (SPDA).",
+            "Flexible Premium Immediate Annuity (FPIA).",
+            "Variable Immediate Annuity."
+        ],
+        "correct": 0,
+        "explanation": "Immediate annuities begin payout within one year; Single Premium means it's funded with a lump sum."
+    },
+    {
+        "id": 53,
+        "domain": "Annuities/Retirement",
+        "text": "The accumulation period in an annuity contract is the time during which:",
+        "choices": [
+            "the owner is making payments into the annuity and the funds are growing tax-deferred.",
+            "the annuitant is receiving income payments.",
+            "the annuity is being converted into income.",
+            "the contract is contested by the insurer."
+        ],
+        "correct": 0,
+        "explanation": "This period is before the annuitant begins receiving income payments."
+    },
+    {
+        "id": 54,
+        "domain": "Annuities/Retirement",
+        "text": "Which term describes the phase when the annuity's cash value is converted into a stream of periodic income payments?",
+        "choices": [
+            "Annuitization period.",
+            "Accumulation period.",
+            "Vesting period.",
+            "Liquidation period."
+        ],
+        "correct": 0,
+        "explanation": "Annuitization is the process of converting the accumulated funds into guaranteed income payments."
+    },
+    {
+        "id": 55,
+        "domain": "Annuities/Retirement",
+        "text": "A Deferred Annuity is characterized by:",
+        "choices": [
+            "an income payout that begins at some point in the future, typically many years after purchase.",
+            "an income payout that begins immediately.",
+            "funding with a single lump sum only.",
+            "funding with pre-tax dollars."
+        ],
+        "correct": 0,
+        "explanation": "Deferred annuities allow for long-term tax-deferred savings before the income phase begins."
+    },
+    {
+        "id": 56,
+        "domain": "Annuities/Retirement",
+        "text": "The primary difference between a Fixed Annuity and a Variable Annuity is that the Variable Annuity:",
+        "choices": [
+            "maintains a separate account and involves investment risk for the owner, requiring a securities license to sell.",
+            "offers guaranteed interest rates and principal.",
+            "is always funded with a single premium.",
+            "is only available to qualified retirement plans."
+        ],
+        "correct": 0,
+        "explanation": "Variable annuities invest in underlying equities (subaccounts) and require the purchaser to bear the investment risk."
+    },
+    {
+        "id": 57,
+        "domain": "Annuities/Retirement",
+        "text": "What is the tax treatment of the interest earned on contributions to a non-qualified annuity during the accumulation phase?",
+        "choices": [
+            "Tax-deferred until withdrawal.",
+            "Tax-free.",
+            "Taxed annually as ordinary income.",
+            "Taxed as capital gains."
+        ],
+        "correct": 0,
+        "explanation": "Taxes are postponed until the funds are distributed."
+    },
+    {
+        "id": 58,
+        "domain": "Annuities/Retirement",
+        "text": "If funds are withdrawn from a non-qualified annuity before age 59 $\frac{1}{2}$, the amount withdrawn is typically subject to:",
+        "choices": [
+            "ordinary income tax on the gain (interest) plus a 10% penalty tax on the gain.",
+            "capital gains tax only.",
+            "tax-free withdrawal.",
+            "a 6% excise tax."
+        ],
+        "correct": 0,
+        "explanation": "The penalty is generally levied on the portion of the withdrawal that constitutes interest or earnings."
+    },
+    {
+        "id": 59,
+        "domain": "Annuities/Retirement",
+        "text": "The exclusion ratio is used in annuities to determine the portion of the periodic income payment that is:",
+        "choices": [
+            "tax-free return of the premium basis.",
+            "taxable interest income.",
+            "subject to a 10% penalty.",
+            "guaranteed by the insurance company."
+        ],
+        "correct": 0,
+        "explanation": "The exclusion ratio separates the tax-free return of principal (cost basis) from the taxable interest earned."
+    },
+    {
+        "id": 60,
+        "domain": "Annuities/Retirement",
+        "text": "An annuity payout option that guarantees income for the annuitant's lifetime and specifies that if the annuitant dies early, payments continue to a beneficiary for a guaranteed period (e.g., 10 or 20 years) is:",
+        "choices": [
+            "Life Income with Period Certain.",
+            "Straight Life Income (Pure Life).",
+            "Joint and Survivor Annuity.",
+            "Fixed Amount Option."
+        ],
+        "correct": 0,
+        "explanation": "This balances high payouts with a guarantee that the beneficiary receives payments if the annuitant dies within the guarantee period."
+    },
+    {
+        "id": 61,
+        "domain": "Annuities/Retirement",
+        "text": "Which type of annuity is characterized by an insurance company guaranteeing a minimum interest rate and a level payout during the income phase?",
+        "choices": [
+            "Fixed Annuity.",
+            "Variable Annuity.",
+            "Equity Indexed Annuity.",
+            "Single Premium Immediate Annuity."
+        ],
+        "correct": 0,
+        "explanation": "Fixed annuities offer guaranteed principal, guaranteed interest rates (minimum), and guaranteed payout amounts."
+    },
+    {
+        "id": 62,
+        "domain": "Annuities/Retirement",
+        "text": "The amount an annuity owner receives if they surrender the contract during the accumulation period is the:",
+        "choices": [
+            "surrender value (cash value minus any surrender charges).",
+            "total premiums paid.",
+            "total accumulated value, tax-free.",
+            "death benefit."
+        ],
+        "correct": 0,
+        "explanation": "Surrender charges are penalties levied to discourage early withdrawal, especially in the early years of the contract."
+    },
+    {
+        "id": 63,
+        "domain": "Annuities/Retirement",
+        "text": "What risk is transferred from the individual to the insurance company when an annuity is purchased?",
+        "choices": [
+            "Longevity risk (the risk of outliving one's money).",
+            "Investment risk.",
+            "Mortality risk.",
+            "Interest rate risk."
+        ],
+        "correct": 0,
+        "explanation": "Annuities are designed to manage the risk that a person will live longer than their savings."
+    },
+    {
+        "id": 64,
+        "domain": "Annuities/Retirement",
+        "text": "A 1035 exchange allows an individual to move money tax-free between:",
+        "choices": [
+            "one life insurance or annuity contract to a new life insurance or annuity contract.",
+            "an IRA to a 401(k) plan.",
+            "a qualified plan to a non-qualified plan.",
+            "a bank account to an annuity."
+        ],
+        "correct": 0,
+        "explanation": "This provision permits a tax-free rollover to a new, similar contract without triggering taxable gains."
+    },
+    {
+        "id": 65,
+        "domain": "Annuities/Retirement",
+        "text": "In a group retirement plan, a vesting schedule determines:",
+        "choices": [
+            "the employee's right to their employer's contributions if they leave the company.",
+            "the maximum amount an employee can contribute.",
+            "the age at which withdrawals must begin.",
+            "the tax-deductibility of employee contributions."
+        ],
+        "correct": 0,
+        "explanation": "Vesting schedules ensure that employees earn ownership of employer matching funds over time."
+    },
+    {
+        "id": 66,
+        "domain": "Annuities/Retirement",
+        "text": "Contributions to a Traditional Individual Retirement Account (IRA) are typically made with:",
+        "choices": [
+            "pre-tax dollars, and withdrawals in retirement are taxed as ordinary income.",
+            "after-tax dollars, and withdrawals are tax-free.",
+            "tax-free dollars, and withdrawals are taxed as capital gains.",
+            "tax-deductible dollars, and withdrawals are tax-free."
+        ],
+        "correct": 0,
+        "explanation": "The contributions may be tax-deductible, offering a tax break upfront."
+    },
+    {
+        "id": 67,
+        "domain": "Annuities/Retirement",
+        "text": "Which retirement plan is funded with after-tax dollars, and qualified withdrawals in retirement are entirely tax-free?",
+        "choices": [
+            "Roth IRA.",
+            "Traditional IRA.",
+            "SEP IRA.",
+            "403(b) plan."
+        ],
+        "correct": 0,
+        "explanation": "Roth contributions are made with money that has already been taxed, leading to tax-free growth and withdrawal."
+    },
+    {
+        "id": 68,
+        "domain": "Annuities/Retirement",
+        "text": "In an IRA, the penalty for excess contributions is:",
+        "choices": [
+            "a 6% excise tax applied annually until the excess is removed.",
+            "a 10% penalty tax.",
+            "forfeiture of the excess amount.",
+            "immediate taxation of the entire account."
+        ],
+        "correct": 0,
+        "explanation": "This tax discourages contributions that exceed the annual limits set by the IRS."
+    },
+    {
+        "id": 69,
+        "domain": "Annuities/Retirement",
+        "text": "The Required Minimum Distribution (RMD) rules for traditional retirement accounts generally apply age:",
+        "choices": [
+            "specified by current tax law (e.g., 73, depending on birth year).",
+            "59 $\frac{1}{2}$",
+            "65.",
+            "70 $\frac{1}{2}$."
+        ],
+        "correct": 0,
+        "explanation": "RMDS mandate that individuals begin withdrawing funds to ensure taxes are paid on the deferred earnings."
+    },
+    {
+        "id": 70,
+        "domain": "Annuities/Retirement",
+        "text": "A 403(b) retirement plan is specifically designed for employees of,",
+        "choices": [
+            "non-profit organizations, public schools, and tax-exempt groups.",
+            "small businesses with less than 50 employees.",
+            "large, private corporations.",
+            "self-employed individuals."
+        ],
+        "correct": 0,
+        "explanation": "This plan is similar to a 401(k) but is available to specific public sector and non-profit workers."
+    },
+    {
+        "id": 71,
+        "domain": "Annuities/Retirement",
+        "text": "The taxation of a non-qualified annuity at annuitization is based on the principle of:",
+        "choices": [
+            "Last-In, First-Out (LIFO) for withdrawals before age 59 $\frac{1}{2}$, and the Exclusion Ratio for income payments.",
+            "First-In, First-Out (FIFO).",
+            "LIFO for all withdrawals.",
+            "the 1035 exchange rule."
+        ],
+        "correct": 0,
+        "explanation": "LIFO means earnings (taxable) are considered withdrawn before principal (tax-free) during the accumulation phase."
+    },
+    {
+        "id": 72,
+        "domain": "Annuities/Retirement",
+        "text": "What is the main purpose of an Equity Indexed Annuity (EIA)?",
+        "choices": [
+            "To provide potential growth tied to a market index (like the S&P 500) while guaranteeing a minimum return or principal protection.",
+            "To invest directly in stock market equities.",
+            "To guarantee the highest possible interest rate.",
+            "To provide immediate income."
+        ],
+        "correct": 0,
+        "explanation": "Offer stock market upside potential with the safety of a fixed annuity floor."
+    },
+    {
+        "id": 73,
+        "domain": "Annuities/Retirement",
+        "text": "In a Variable Annuity, the funds are legally considered,",
+        "choices": [
+            "separate accounts.",
+            "the insurer's general accounts.",
+            "tax-free assets.",
+            "liabilities of the insurer."
+        ],
+        "correct": 0,
+        "explanation": "This segregation protects invested in subaccounts, which are the investment value from the insurer's general accounts or creditors."
+    },
+    {
+        "id": 74,
+        "domain": "Annuities/Retirement",
+        "text": "The two names necessary for a deferred annuity contract are the Owner and the:",
+        "choices": [
+            "annuitant.",
+            "beneficiary.",
+            "producer.",
+            "trustee."
+        ],
+        "correct": 0,
+        "explanation": "The owner controls the contract; the annuitant is the person whose life expectancy determines the payout period."
+    },
+    {
+        "id": 75,
+        "domain": "Annuities/Retirement",
+        "text": "A Simplified Employee Pension (SEP) IRA, contributions are typically made by,",
+        "choices": [
+            "the employer only, for the benefit of eligible employees.",
+            "the employee only, using pre-tax dollars.",
+            "both the employer and the employee.",
+            "the employee only, using after-tax dollars."
+        ],
+        "correct": 0,
+        "explanation": "SEPS allow employers to contribute to their employees' IRAS with simpler administrative requirements."
+    },
+    {
+        "id": 76,
+        "domain": "Annuities/Retirement",
+        "text": "When a business owner establishes a Simplified Employee Pension (SEP) IRA, contributions are typically made by,",
+        "choices": [
+            "the employer only, for the benefit of eligible employees.",
+            "the employee only.",
+            "both the employer and the employee.",
+            "a third-party administrator."
+        ],
+        "correct": 0,
+        "explanation": "SEPS allow employers to contribute to their employees' IRAS with simpler administrative requirements."
+    },
+    {
+        "id": 77,
+        "domain": "Annuities/Retirement",
+        "text": "A Joint and Survivor Annuity payout option guarantees income for.",
+        "choices": [
+            "two individuals for as long as either of them is alive.",
+            "the annuitant only, with a period certain.",
+            "the first annuitant only.",
+            "a fixed number of years."
+        ],
+        "correct": 0,
+        "explanation": "Payments typically continue at a reduced percentage (e.g., 50% or 75%) after the death of the first annuitant."
+    },
+    {
+        "id": 78,
+        "domain": "Annuities/Retirement",
+        "text": "The amount of an IRA contribution that can be deducted from current income is limited primarily by.",
+        "choices": [
+            "the contributor's earned income and whether they are an active participant in an employer-sponsored retirement plan.",
+            "only the contributor's earned income.",
+            "only whether they are an active participant in an employer-sponsored retirement plan.",
+            "the age of the contributor."
+        ],
+        "correct": 0,
+        "explanation": "Income phase-outs and participation in other plans restrict the deductibility of traditional IRA contributions."
+    },
+    {
+        "id": 79,
+        "domain": "Annuities/Retirement",
+        "text": "If an annuitant chooses a Life Annuity with Installment Refund, payments will continue to a beneficiary after the annuitant's death until,",
+        "choices": [
+            "the total of all payments equals the purchase price of the annuity.",
+            "the beneficiary dies.",
+            "the end of a specified period certain.",
+            "the cash value is depleted."
+        ],
+        "correct": 0,
+        "explanation": "This guarantees that the principal cost basis is fully returned beneficiary."
+    },
+    {
+        "id": 80,
+        "domain": "Annuities/Retirement",
+        "text": "A Qualified Retirement Plan offers which primary tax advantage?",
+        "choices": [
+            "Tax-deductible growth.",
+            "Tax-free withdrawals.",
+            "No early withdrawal penalties.",
+            "Unlimited contribution limits."
+        ],
+        "correct": 0,
+        "explanation": "Qualified plans meet specific IRS requirements for favorable tax treatment."
+    },
+    {
+        "id": 81,
+        "domain": "Annuities/Retirement",
+        "text": "Which factor most significantly influences the size of the payout at the time of annuitization?",
+        "choices": [
+            "The annuitant's age and gender at the time of annuitization.",
+            "The amount of the total contribution.",
+            "The performance of the market index.",
+            "The number of beneficiaries."
+        ],
+        "correct": 0,
+        "explanation": "Life expectancy is the primary factor used to calculate the periodic payment amount."
+    },
+    {
+        "id": 82,
+        "domain": "Group Insurance",
+        "text": "The typical conversion period for an employee to convert group term life coverage to an individual policy after termination is:",
+        "choices": [
+            "31 days.",
+            "10 days.",
+            "60 days.",
+            "90 days."
+        ],
+        "correct": 0,
+        "explanation": "The statutory conversion period ensures the employee has time to maintain coverage without proving insurability."
+    },
+    {
+        "id": 83,
+        "domain": "Group Insurance",
+        "text": "In group life insurance, the cost of coverage is generally based on the average age and gender mix of the:",
+        "choices": [
+            "entire group, not the individual members.",
+            "individual members.",
+            "insurer's mortality tables.",
+            "state's mandated minimum."
+        ],
+        "correct": 0,
+        "explanation": "Group underwriting uses the characteristics of the group as a whole to determine premium rates."
+    },
+    {
+        "id": 84,
+        "domain": "Group Insurance",
+        "text": "A noncontributory group life plan requires what percentage of eligible employees to participate?",
+        "choices": [
+            "100%",
+            "75%",
+            "50%",
+            "51%"
+        ],
+        "correct": 0,
+        "explanation": "If the employer pays the entire premium (noncontributory), all eligible members must be included to prevent adverse selection."
+    },
+    {
+        "id": 85,
+        "domain": "Group Insurance",
+        "text": "If a group life master policy is canceled, a state continuation law typically grants terminated employees the right to:",
+        "choices": [
+            "continue the existing group coverage for a limited time (e.g., 90 or 180 days).",
+            "receive a full refund of all premiums paid.",
+            "convert to a permanent policy immediately.",
+            "purchase a new individual policy tax-free."
+        ],
+        "correct": 0,
+        "explanation": "State laws often provide a temporary period of extension coverage before the conversion right must be exercised."
+    },
+    {
+        "id": 86,
+        "domain": "Group Insurance",
+        "text": "The evidence of coverage provided to individual members of a group life plan is called a:",
+        "choices": [
+            "Certificate of Insurance.",
+            "Master Policy.",
+            "Policy Summary.",
+            "Endorsement."
+        ],
+        "correct": 0,
+        "explanation": "The master policy is held by the employer (policy owner), and members receive a certificate outlining their coverage."
+    },
+    {
+        "id": 87,
+        "domain": "Group Insurance",
+        "text": "Which type of group life insurance covers fluctuating numbers of debtors in connection with a specific loan or financial obligation?",
+        "choices": [
+            "Group Credit Life Insurance.",
+            "Group Ordinary Life Insurance.",
+            "Group Variable Life Insurance.",
+            "Group Universal Life Insurance."
+        ],
+        "correct": 0,
+        "explanation": "This coverage pays off the loan balance if the debtor dies and is typically mandatory for the loan duration."
+    },
+    {
+        "id": 88,
+        "domain": "Group Insurance",
+        "text": "In a contributory group life plan, what percentage of eligible employees must enroll in the plan?",
+        "choices": [
+            "A specified percentage, usually 75%.",
+            "100%.",
+            "50%.",
+            "30%."
+        ],
+        "correct": 0,
+        "explanation": "If employees pay part of the premium, a minimum participation percentage is required to avoid adverse selection."
+    },
+    {
+        "id": 89,
+        "domain": "CA Regulations/Ethics",
+        "text": "The individual entitled to a commission on an insurance sale in California must hold a valid:",
+        "choices": [
+            "producer license (Life Agent).",
+            "securities broker license.",
+            "notary license.",
+            "business license only."
+        ],
+        "correct": 0,
+        "explanation": "Only a properly licensed and appointed individual can receive commissions for selling insurance products in California."
+    },
+    {
+        "id": 90,
+        "domain": "CA Regulations/Ethics",
+        "text": "The maximum penalty the California Insurance Commissioner may impose for a single willful violation of the Insurance Code is:",
+        "choices": [
+            "$5,000 to $10,000 (depending on the code section and intent).",
+            "$1,000.",
+            "$25,000.",
+            "$100,000."
+        ],
+        "correct": 0,
+        "explanation": "Penalties vary based on whether the violation was willful or non-willful, with higher fines for intentional misconduct."
+    },
+    {
+        "id": 91,
+        "domain": "CA Regulations/Ethics",
+        "text": "An agent who induces a client to lapse or forfeit their existing life insurance policy and replace it with a new one through misrepresentation is committing:",
+        "choices": [
+            "Twisting.",
+            "Rebating.",
+            "Defamation.",
+            "Coercion."
+        ],
+        "correct": 0,
+        "explanation": "Twisting is the unethical act of replacing insurance solely for the purpose of earning a new commission, often by making false comparisons."
+    },
+    {
+        "id": 92,
+        "domain": "CA Regulations/Ethics",
+        "text": "An agent offering a prospective client a valuable item (like a $50 gift card) in exchange for purchasing a policy is committing the prohibited practice of:",
+        "choices": [
+            "Rebating.",
+            "Twisting.",
+            "Defamation.",
+            "Coercion."
+        ],
+        "correct": 0,
+        "explanation": "Rebating involves offering anything of value not specified in the insurance contract as an inducement to purchase."
+    },
+    {
+        "id": 93,
+        "domain": "CA Regulations/Ethics",
+        "text": "In California, an agent's license is typically issued for a term of:",
+        "choices": [
+            "two years.",
+            "one year.",
+            "three years.",
+            "four years."
+        ],
+        "correct": 0,
+        "explanation": "Licenses must be renewed biennially, requiring completion of continuing education credits."
+    },
+    {
+        "id": 94,
+        "domain": "CA Regulations/Ethics",
+        "text": "The required number of Continuing Education (CE) hours in California for a Life Agent within a two-year license term is generally:",
+        "choices": [
+            "24 hours, including 4 hours dedicated to Ethics.",
+            "12 hours, with no ethics requirement.",
+            "30 hours, all in ethics.",
+            "40 hours, including 8 hours dedicated to ethics."
+        ],
+        "correct": 0,
+        "explanation": "CE requirements ensure agents stay current on products, laws, and ethical practices."
+    },
+    {
+        "id": 95,
+        "domain": "CA Regulations/Ethics",
+        "text": "The penalty for transacting insurance business without a valid license in California is typically:",
+        "choices": [
+            "a misdemeanor criminal offense and/or significant fines.",
+            "a small civil penalty only.",
+            "an automatic lifetime ban.",
+            "mandatory community service."
+        ],
+        "correct": 0,
+        "explanation": "The Insurance Commissioner rigorously enforces licensing requirements to protect the public."
+    },
+    {
+        "id": 96,
+        "domain": "CA Regulations/Ethics",
+        "text": "A licensee must notify the California Insurance Commissioner of any change of address within:",
+        "choices": [
+            "30 days.",
+            "10 days.",
+            "60 days.",
+            "90 days."
+        ],
+        "correct": 0,
+        "explanation": "Timely notification is required to ensure proper communication and regulatory compliance."
+    },
+    {
+        "id": 97,
+        "domain": "CA Regulations/Ethics",
+        "text": "The California Insurance Commissioner is, ",
+        "choices": [
+            "elected by the people of California.",
+            "appointed by the Governor.",
+            "appointed by the President.",
+            "the highest-ranking agent in the state."
+        ],
+        "correct": 0,
+        "explanation": "The Commissioner is an elected official responsible for enforcing the state's Insurance Code."
+    },
+    {
+        "id": 98,
+        "domain": "CA Regulations/Ethics",
+        "text": "The required financial document that an agent must deliver to a prospective purchaser of life insurance is the:",
+        "choices": [
+            "Policy Summary and Buyer's Guide.",
+            "Agent's financial statement.",
+            "Certificate of Authority.",
+            "Viatical Settlement form."
+        ],
+        "correct": 0,
+        "explanation": "These documents provide essential, standardized consumer information to aid in decision-making."
+    },
+    {
+        "id": 99,
+        "domain": "CA Regulations/Ethics",
+        "text": "The term Insolvency in California insurance law means an insurer can no longer meet its:",
+        "choices": [
+            "financial obligations and liabilities.",
+            "marketing goals.",
+            "minimum staffing requirements.",
+            "tax-reporting deadlines."
+        ],
+        "correct": 0,
+        "explanation": "Insolvency occurs when a company’s assets are less than its liabilities, triggering regulatory intervention."
+    },
+    {
+        "id": 100,
+        "domain": "CA Regulations/Ethics",
+        "text": "If an insured replaces an existing policy with a new one, the agent must ensure the client receives a:",
+        "choices": [
+            "Notice Regarding Replacement.",
+            "Guaranteed Insurability Rider.",
+            "Policy Loan Provision.",
+            "Rebating Disclosure Form."
+        ],
+        "correct": 0,
+        "explanation": "This form informs the consumer about the potential disadvantages of replacing coverage, such as new contestability periods."
+    },
+    {
+        "id": 101,
+        "domain": "CA Regulations/Ethics",
+        "text": "An agent who knowingly prepares an incomplete or false application is guilty of:",
+        "choices": [
+            "fraud or a fraudulent act.",
+            "twisting.",
+            "rebating.",
+            "defamation."
+        ],
+        "correct": 0,
+        "explanation": "Such actions violate the Insurance Code and carry severe civil and criminal penalties."
+    },
+    {
+        "id": 102,
+        "domain": "CA Regulations/Ethics",
+        "text": "In life insurance replacement situations, the agent must provide the replacing insurer with:",
+        "choices": [
+            "a list of all existing life insurance policies being replaced.",
+            "the client's bank statements.",
+            "a copy of the agent's CE certificate.",
+            "proof of the client's medical history."
+        ],
+        "correct": 0,
+        "explanation": "This requirement ensures that the replacing company is aware of the transaction and can properly process the replacement forms."
+    },
+    {
+        "id": 103,
+        "domain": "CA Regulations/Ethics",
+        "text": "The primary purpose of the California Life and Health Guarantee Association is to:",
+        "choices": [
+            "protect policyholders against the insolvency of member insurers, subject to certain limits.",
+            "regulate agent commissions.",
+            "market life insurance products to consumers.",
+            "enforce the contestable period."
+        ],
+        "correct": 0,
+        "explanation": "The Association provides a safety net, guaranteeing claims if a member insurance company becomes financially unable to pay."
+    },
+    {
+        "id": 104,
+        "domain": "CA Regulations/Ethics",
+        "text": "When an insurance agent engages in fiduciary responsibility, they are acting in a position of:",
+        "choices": [
+            "trust and must handle the client's premiums and funds responsibly.",
+            "authority to legally contest the policy.",
+            "a partner with the client.",
+            "a contractor for the state."
+        ],
+        "correct": 0,
+        "explanation": "Fiduciary duty requires the agent to act in the best financial interest of the client and the insurer regarding premium handling."
+    },
+    {
+        "id": 105,
+        "domain": "CA Regulations/Ethics",
+        "text": "Advertising that inaccurately describes policy benefits or terms to the public is classified as:",
+        "choices": [
+            "Misrepresentation.",
+            "Twisting.",
+            "Rebating.",
+            "Defamation."
+        ],
+        "correct": 0,
+        "explanation": "Misrepresentation is an unfair trade practice involving false or misleading statements about insurance products or services."
+    },
+    {
+        "id": 106,
+        "domain": "CA Regulations/Ethics",
+        "text": "An agent may share commissions with another person only if that person is:",
+        "choices": [
+            "also a properly licensed and appointed life insurance agent.",
+            "a spouse or immediate family member.",
+            "a financial advisor.",
+            "an unlicensed office assistant."
+        ],
+        "correct": 0,
+        "explanation": "Sharing commissions with unlicensed individuals is a form of illegal rebating or fee-splitting."
+    },
+    {
+        "id": 107,
+        "domain": "CA Regulations/Ethics",
+        "text": "Under California law, the agent must refund all premiums paid if the policy is returned during the required free-look period, which is typically:",
+        "choices": [
+            "10 days (or 30 days for seniors).",
+            "5 days.",
+            "60 days.",
+            "1 year."
+        ],
+        "correct": 0,
+        "explanation": "The policy must be refunded fully and promptly when returned during the mandated review period."
+    },
+    {
+        "id": 108,
+        "domain": "CA Regulations/Ethics",
+        "text": "When selling an annuity in California, the agent must ensure that the contract is suitable for the consumer based on their:",
+        "choices": [
+            "financial situation, tax status, and investment objectives.",
+            "age only.",
+            "current life insurance coverage.",
+            "credit score."
+        ],
+        "correct": 0,
+        "explanation": "The suitability rule requires agents to recommend products that align with the client's financial needs and goals."
+    },
+    {
+        "id": 109,
+        "domain": "Group Insurance",
+        "text": "The maximum amount of term life insurance that can be sold to a debtor under Credit Life Insurance is generally limited to:",
+        "choices": [
+            "the amount of the outstanding debt.",
+            "the debtor's annual salary.",
+            "$100,000.",
+            "the cash value of the policy."
+        ],
+        "correct": 0,
+        "explanation": "The purpose of credit life is only to cover the loan balance, preventing over-insurance."
+    },
+    {
+        "id": 110,
+        "domain": "Settlements",
+        "text": "Which settlement option provides the beneficiary with income that can never be outlived, but the periodic payments stop at the beneficiary's death?",
+        "choices": [
+            "Life Income Option (Straight Life).",
+            "Fixed Period Option.",
+            "Interest Only Option.",
+            "Life Income with Period Certain."
+        ],
+        "correct": 0,
+        "explanation": "This is the same concept as the pure life annuity, maximizing periodic income at the cost of the refund guarantee."
+    },
+    {
+        "id": 111,
+        "domain": "Settlements",
+        "text": "The interest-only settlement option allows the beneficiary to receive:",
+        "choices": [
+            "periodic interest payments on the death benefit, while leaving the principal (face amount) intact for later withdrawal.",
+            "only the principal immediately.",
+            "taxable interest payments that deplete the principal.",
+            "a fixed monthly payment until the principal is exhausted."
+        ],
+        "correct": 0,
+        "explanation": "This option preserves the principal, providing liquidity and income simultaneously."
+    },
+    {
+        "id": 112,
+        "domain": "Settlements",
+        "text": "If a beneficiary chooses the Fixed Period settlement option, the death benefit is paid out over a predetermined:",
+        "choices": [
+            "number of years (e.g., 10, 15, or 20 years).",
+            "amount of monthly income.",
+            "interest rate.",
+            "life expectancy of the beneficiary."
+        ],
+        "correct": 0,
+        "explanation": "The amount of each installment is determined by the policy face amount, the interest rate, and the duration selected."
+    },
+    {
+        "id": 113,
+        "domain": "Policy Provisions",
+        "text": "Which policy rider prevents the insurer from denying a claim based on certain material misrepresentations after the policy has been in force for two years?",
+        "choices": [
+            "Incontestable Clause (as part of the policy).",
+            "Waiver of Premium Rider.",
+            "Misstatement of Age Provision.",
+            "Free-Look Period."
+        ],
+        "correct": 0,
+        "explanation": "Though not strictly a rider, this is the provision that limits the insurer's right to contest the contract's validity."
+    },
+    {
+        "id": 114,
+        "domain": "Riders/Provisions",
+        "text": "The primary purpose of the War Exclusion in a life insurance policy is to:",
+        "choices": [
+            "exclude death resulting directly from acts of war, whether declared or undeclared.",
+            "exclude all deaths in a foreign country.",
+            "provide double indemnity during peacetime.",
+            "limit the policy's cash value growth."
+        ],
+        "correct": 0,
+        "explanation": "This protects the insurer from catastrophic losses during military conflicts."
+    },
+    {
+        "id": 115,
+        "domain": "Annuities/Retirement",
+        "text": "An annuity payment option that guarantees income for a period of years, then ceases, whether or not the annuitant is still alive, is the:",
+        "choices": [
+            "Fixed Amount Option.",
+            "Life Income Option.",
+            "Joint and Survivor Option.",
+            "Interest-Only Option."
+        ],
+        "correct": 0,
+        "explanation": "This option guarantees a specific monthly payment amount until the principal and interest are exhausted."
+    },
+    {
+        "id": 116,
+        "domain": "Annuities/Retirement",
+        "text": "The Tax-Sheltered Annuity (TSA) is another name for which retirement plan?",
+        "choices": [
+            "403(b) plan.",
+            "Traditional IRA.",
+            "SEP IRA.",
+            "401(k) plan."
+        ],
+        "correct": 0,
+        "explanation": "TSAs are specifically for employees of public schools and non-profits, offering tax-deferred growth."
+    },
+    {
+        "id": 117,
+        "domain": "Application/Underwriting",
+        "text": "The Medical Information Bureau (MIB) is utilized by underwriters primarily to:",
+        "choices": [
+            "detect and prevent misrepresentation and fraud by applicants during the application process.",
+            "run credit checks on applicants.",
+            "determine the final premium rate.",
+            "process claims faster."
+        ],
+        "correct": 0,
+        "explanation": "The MIB shares coded medical information among member insurance companies."
+    },
+    {
+        "id": 118,
+        "domain": "Application/Underwriting",
+        "text": "What is the effect of an insurer classifying an insured as substandard during underwriting?",
+        "choices": [
+            "A higher premium is charged or the policy is issued with specific exclusions.",
+            "The policy is automatically denied.",
+            "The insured receives a premium discount.",
+            "The policy is issued as a term policy only."
+        ],
+        "correct": 0,
+        "explanation": "Substandard risk classification is used for individuals who present a higher-than-average risk of loss."
+    },
+    {
+        "id": 119,
+        "domain": "Contract Law",
+        "text": "The legal act of submitting the application and the initial premium is considered the:",
+        "choices": [
+            "Offer (by the applicant) in the formation of the contract.",
+            "Acceptance (by the insurer).",
+            "Consideration (by the insurer).",
+            "Waiver (by the applicant)."
+        ],
+        "correct": 0,
+        "explanation": "The offer is typically the application and the first premium payment; acceptance is when the underwriter approves the risk."
+    },
+    {
+        "id": 120,
+        "domain": "Contract Law",
+        "text": "The type of insurance contract where one party (the insurer) has the power to write the contract and the insured has no power to negotiate the terms is called a:",
+        "choices": [
+            "Contract of Adhesion.",
+            "Unilateral Contract.",
+            "Aleatory Contract.",
+            "Personal Contract."
+        ],
+        "correct": 0,
+        "explanation": "Because the insured must 'take it or leave it,' ambiguous language is always interpreted in the insured's favor."
+    },
+    {
+        "id": 121,
+        "domain": "Contract Law",
+        "text": "The Parol Evidence Rule prevents the court from allowing into evidence:",
+        "choices": [
+            "oral statements made before or during the execution of the written contract that contradict the contract's terms.",
+            "written statements made after the contract is executed.",
+            "only testimonial evidence from the agent.",
+            "any evidence not specifically listed in the policy."
+        ],
+        "correct": 0,
+        "explanation": "This rule reinforces the authority of the written Entire Contract clause."
+    }
+];
+
+/*
+ * ====================================================================
+ * | 2. STATE MANAGEMENT AND DOM ELEMENTS
+ * ====================================================================
+ */
+let domainScores = {};
+let uniqueDomains = [...new Set(questionBank.map(q => q.domain))];
+uniqueDomains.forEach(domain => { 
+    domainScores[domain] = { total: 0, correct: 0, missedQueue: [], isMastered: false }; 
+});
+
+let currentQuestion = null;
+let currentQuestionIndex = -1;
+let answered = false;
+let repetitionCounter = 0;
+const SPACING_INTERVAL = 8;
+const MASTERY_THRESHOLD = 0.6;
+const WEIGHTED_PROBABILITY = 0.7; 
+
+// DOM Elements
+const questionText = document.getElementById('question-text');
+const answerForm = document.getElementById('answer-form');
+const explanationArea = document.getElementById('explanation-area');
+const explanationText = document.getElementById('explanation-text');
+const nextButton = document.getElementById('next-button');
+const explanationToggle = document.getElementById('explanation-toggle');
+const questionCounter = document.getElementById('question-counter');
+const flagButton = document.getElementById('flag-button');
+const totalQuestions = questionBank.length;
+let flaggedQuestions = new Set();
+let currentQuestionIndexInAllQuestions = 0;
+
+
+/*
+ * ====================================================================
+ * | 3. ADAPTIVE DRILL ENGINE LOGIC
+ * ====================================================================
+ */
+
+function findWeakestDomain() {
+    let weakest = null;
+    let lowestScore = MASTERY_THRESHOLD + 0.1;
+    
+    for (const domain in domainScores) {
+        let domainData = domainScores[domain];
+        if (domainData.isMastered) continue;
+
+        let score = domainData.total === 0 ? 0 : domainData.correct / domainData.total;
+
+        if (score < lowestScore) {
+            lowestScore = score;
+            weakest = domain;
+        }
+    }
+    return weakest;
+}
+
+function checkRepetitionQueue() {
+    for (const domain in domainScores) {
+        if (domainScores[domain].missedQueue.length > 0) {
+            return domainScores[domain].missedQueue.shift(); 
+        }
+    }
+    return null;
+}
+
+function getQuestionById(id) {
+    return questionBank.find(q => q.id === id);
+}
+
+function getQuestionFromDomain(domain) {
+    let questionsInDomain = questionBank.filter(q => q.domain === domain);
+    if (questionsInDomain.length === 0) return getRandomUntriedQuestion();
+
+    return questionsInDomain[Math.floor(Math.random() * questionsInDomain.length)];
+}
+
+function getRandomUntriedQuestion() {
+    return questionBank[Math.floor(Math.random() * questionBank.length)];
+}
+
+
+function getNextQuestionObject() {
+    // 1. Spaced Repetition Check
+    if (repetitionCounter >= SPACING_INTERVAL) {
+        let repeatId = checkRepetitionQueue();
+        if (repeatId) {
+            repetitionCounter = 0;
+            return getQuestionById(repeatId);
+        }
+    }
+
+    // 2. Weighted Drill Check
+    let weakestDomain = findWeakestDomain();
+    let isWeighted = Math.random() < WEIGHTED_PROBABILITY;
+
+    repetitionCounter++; 
+    
+    if (weakestDomain && isWeighted) {
+        return getQuestionFromDomain(weakestDomain);
+    }
+    
+    return getRandomUntriedQuestion();
+}
+
+function processAnswer(question, choiceIndex) {
+    const domain = question.domain;
+    let isCorrect = choiceIndex === question.correct;
+    
+    domainScores[domain].total++;
+    
+    if (isCorrect) {
+        domainScores[domain].correct++;
+    } else {
+        domainScores[domain].missedQueue.push(question.id);
+    }
+
+    // Check for Mastery
+    let score = domainScores[domain].correct / domainScores[domain].total;
+    if (score >= MASTERY_THRESHOLD && domainScores[domain].total > 5) {
+        domainScores[domain].isMastered = true;
+        console.log(`Mastery achieved in ${domain}!`);
+    }
+
+    return isCorrect;
+}
+
+
+/*
+ * ====================================================================
+ * | 4. RENDER AND EVENT LISTENERS
+ * ====================================================================
+ */
+
+function renderQuestion() {
+    currentQuestion = getNextQuestionObject();
+    
+    explanationArea.style.display = 'none';
+    answerForm.innerHTML = '';
+    nextButton.disabled = true;
+    answered = false;
+    flagButton.textContent = flaggedQuestions.has(currentQuestion.id) ? 'Unflag for Review' : 'Flag for Review';
+    flagButton.className = flaggedQuestions.has(currentQuestion.id) ? 'flagged' : '';
+
+    questionText.textContent = currentQuestion.text;
+    questionCounter.textContent = `Q ${currentQuestionIndexInAllQuestions + 1} / ${totalQuestions}`;
+
+
+    currentQuestion.choices.forEach((choice, idx) => {
+        let btn = document.createElement('button');
+        btn.type = 'button';
+        btn.textContent = choice;
+        btn.setAttribute('data-index', idx);
+        
+        btn.addEventListener('click', handleAnswerClick);
+        answerForm.appendChild(btn);
+    });
+}
+
+function handleAnswerClick(event) {
+    if (answered) return;
+    answered = true;
+
+    const selectedButton = event.target;
+    const choiceIndex = parseInt(selectedButton.getAttribute('data-index'));
+    
+    const isCorrect = processAnswer(currentQuestion, choiceIndex);
+    
+    explanationText.textContent = `Mentor: ${isCorrect ? 'Correct! Excellent job.' : 'Incorrect. Review this core concept.'} ${currentQuestion.explanation}`;
+    explanationArea.style.display = 'block';
+
+    Array.from(answerForm.children).forEach(btn => {
+        const btnIndex = parseInt(btn.getAttribute('data-index'));
+        btn.disabled = true;
+        if (btnIndex === currentQuestion.correct) {
+            btn.classList.add('correct');
+        } else if (btnIndex === choiceIndex) {
+            btn.classList.add('incorrect');
+        }
+    });
+
+    nextButton.disabled = false;
+}
+
+nextButton.addEventListener('click', () => {
+    currentQuestionIndexInAllQuestions++;
+    
+    if (currentQuestionIndexInAllQuestions >= totalQuestions) {
+        alert('Simulation complete! Review your final scores in the console.');
+        console.log("Final Domain Scores:", domainScores);
+        return;
+    }
+    renderQuestion();
+});
+
+flagButton.addEventListener('click', () => {
+    if (flaggedQuestions.has(currentQuestion.id)) {
+        flaggedQuestions.delete(currentQuestion.id);
+        flagButton.textContent = 'Flag for Review';
+        flagButton.classList.remove('flagged');
+    } else {
+        flaggedQuestions.add(currentQuestion.id);
+        flagButton.textContent = 'Unflag for Review';
+        flagButton.classList.add('flagged');
+    }
+});
+
+explanationToggle.addEventListener('click', () => {
+    explanationArea.style.display = explanationArea.style.display === 'block' ? 'none' : 'block';
+});
+
+// INIT Function: Start the simulator
+function initSimulator() {
+    // Check if the DOM elements are ready before trying to render
+    if (!questionText || !answerForm) {
+        // Fallback for safety, though the issue should be resolved by embedding the script
+        document.body.innerHTML = '<h1>Error: Simulator failed to load. Check console for syntax errors.</h1>';
+        return;
+    }
+    console.log(`Simulator Initialized with ${totalQuestions} questions across ${uniqueDomains.length} domains.`);
+    console.log("Adaptive Logic: 60% Mastery, 8-Question Spacing, Weighted Drills.");
+    renderQuestion();
+}
+
+initSimulator();
+
+</script>
+</body>
+</html>
