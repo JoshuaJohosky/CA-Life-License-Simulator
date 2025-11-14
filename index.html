@@ -1960,17 +1960,73 @@ function handleAnswerClick(event) {
 // Ensure the page saves progress on refresh/close
 window.onbeforeunload = saveProgress;
 
+/* === PASTE THIS ENTIRE BLOCK TO REPLACE YOUR OLD EVENT LISTENERS AND INIT FUNCTIONS === */
+
+// Function to visually display the final score report on the screen
+function renderReportCard() {
+    let overallCorrect = 0;
+    let overallTotal = 0;
+
+    let domainHTML = "";
+    let weak = [];
+
+    for (const domain in domainScores) {
+        const s = domainScores[domain];
+        const pct = s.total > 0 ? s.correct / s.total : 0;
+        const percentStr = (pct * 100).toFixed(1) + "%";
+
+        overallCorrect += s.correct;
+        overallTotal += s.total;
+
+        domainHTML += `<p style="margin-bottom: 5px;"><strong>${domain}</strong>: ${s.correct}/${s.total} (${percentStr})</p>`;
+
+        if (pct < MASTERY_THRESHOLD) weak.push(domain);
+    }
+
+    const totalPct = overallTotal > 0 ? (overallCorrect / overallTotal) : 0;
+    const formatted = (totalPct * 100).toFixed(1) + "%";
+
+    // Hide the question and action areas
+    document.getElementById("question-area").style.display = "none";
+    document.getElementById("explanation-area").style.display = "none";
+    document.getElementById("action-bar").style.display = "none";
+
+    // Create and show the report card area
+    const report = document.createElement('div');
+    report.id = 'report-card-area';
+    report.style.cssText = "padding: 20px; margin: 20px auto; background: white; border-radius: 6px; max-width: 450px;";
+    
+    report.innerHTML = `
+        <h2 style="color:#003366;">Simulation Complete: Performance Report</h2>
+        <div id="total-score">
+            <p><strong>Overall Score:</strong> ${overallCorrect} / ${overallTotal}</p>
+            <p style="font-size:1.6em; color:#003366;">Final Score: ${formatted}</p>
+        </div>
+        <h3 style="margin-top: 20px;">Domain Results:</h3>
+        <div id="domain-results">${domainHTML}</div>
+        <h3 style="margin-top: 20px;">Recommended Study Focus:</h3>
+        <p style="font-weight: bold; color: ${weak.length ? 'red' : 'green'};">
+            ${weak.length ? weak.join(", ") : "None — excellent mastery!"}
+        </p>
+        <button onclick="window.location.reload();" style="margin-top: 20px; padding: 10px 15px; background: #FF5722; color: white; border: none; border-radius: 4px;">Restart New Session</button>
+    `;
+    
+    document.body.appendChild(report); 
+    
+    localStorage.removeItem('simulatorProgress');
+}
+
+
+// Event Listener for Next Button (Modified for Mobile Report)
 nextButton.addEventListener('click', () => {
     currentQuestionIndexInAllQuestions++;
     
     if (currentQuestionIndexInAllQuestions >= totalQuestions) {
-        alert('Simulation complete! Review your final scores in the console.');
-        console.log("Final Domain Scores:", domainScores);
-        // Clear progress when session is finished
-        localStorage.removeItem('simulatorProgress'); 
+        renderReportCard(); 
         return;
     }
     renderQuestion();
+    saveProgress(); 
 });
 
 flagButton.addEventListener('click', () => {
@@ -2017,3 +2073,4 @@ initSimulator();
 </script>
 </body>
 </html>
+
