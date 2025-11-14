@@ -22,7 +22,7 @@
         display: flex;
         justify-content: space-between;
         padding: 12px 15px;
-        background-color: #003366; /* Primary color */
+        background-color: #003366; 
         color: white;
         font-weight: bold;
     }
@@ -882,7 +882,7 @@ let questionBank = [
     {
         "id": 58,
         "domain": "Annuities/Retirement",
-        "text": "If funds are withdrawn from a non-qualified annuity before age 59 $\frac{1}{2}$, the amount withdrawn is typically subject to:",
+        "text": "If funds are withdrawn from a non-qualified annuity before age 59 $\\frac{1}{2}$, the amount withdrawn is typically subject to:",
         "choices": [
             "ordinary income tax on the gain (interest) plus a 10% penalty tax on the gain.",
             "capital gains tax only.",
@@ -1028,9 +1028,9 @@ let questionBank = [
         "text": "The Required Minimum Distribution (RMD) rules for traditional retirement accounts generally apply age:",
         "choices": [
             "specified by current tax law (e.g., 73, depending on birth year).",
-            "59 $\frac{1}{2}$",
+            "59 $\\frac{1}{2}$",
             "65.",
-            "70 $\frac{1}{2}$."
+            "70 $\\frac{1}{2}$."
         ],
         "correct": 0,
         "explanation": "RMDS mandate that individuals begin withdrawing funds to ensure taxes are paid on the deferred earnings."
@@ -1053,7 +1053,7 @@ let questionBank = [
         "domain": "Annuities/Retirement",
         "text": "The taxation of a non-qualified annuity at annuitization is based on the principle of:",
         "choices": [
-            "Last-In, First-Out (LIFO) for withdrawals before age 59 $\frac{1}{2}$, and the Exclusion Ratio for income payments.",
+            "Last-In, First-Out (LIFO) for withdrawals before age 59 $\\frac{1}{2}$, and the Exclusion Ratio for income payments.",
             "First-In, First-Out (FIFO).",
             "LIFO for all withdrawals.",
             "the 1035 exchange rule."
@@ -1720,17 +1720,22 @@ let questionBank = [
  */
 let domainScores = {};
 let uniqueDomains = [...new Set(questionBank.map(q => q.domain))];
-uniqueDomains.forEach(domain => { 
-    domainScores[domain] = { total: 0, correct: 0, missedQueue: [], isMastered: false }; 
-});
-
 let currentQuestion = null;
-let currentQuestionIndex = -1;
 let answered = false;
 let repetitionCounter = 0;
 const SPACING_INTERVAL = 8;
 const MASTERY_THRESHOLD = 0.6;
 const WEIGHTED_PROBABILITY = 0.7; 
+
+// TIMER Variables
+let timerInterval = null;
+let secondsElapsed = 0;
+const timerDisplay = document.getElementById('timer');
+
+// PROGRESS Variables
+let currentQuestionIndexInAllQuestions = 0;
+let flaggedQuestions = new Set();
+
 
 // DOM Elements
 const questionText = document.getElementById('question-text');
@@ -1742,13 +1747,56 @@ const explanationToggle = document.getElementById('explanation-toggle');
 const questionCounter = document.getElementById('question-counter');
 const flagButton = document.getElementById('flag-button');
 const totalQuestions = questionBank.length;
-let flaggedQuestions = new Set();
-let currentQuestionIndexInAllQuestions = 0;
 
 
 /*
  * ====================================================================
- * | 3. ADAPTIVE DRILL ENGINE LOGIC
+ * | 3. LOCAL STORAGE & TIMER FUNCTIONS
+ * ====================================================================
+ */
+
+function saveProgress() {
+    const progress = {
+        scores: domainScores,
+        questionIndex: currentQuestionIndexInAllQuestions,
+        seconds: secondsElapsed,
+        flagged: Array.from(flaggedQuestions)
+    };
+    localStorage.setItem('simulatorProgress', JSON.stringify(progress));
+}
+
+function loadProgress() {
+    const saved = localStorage.getItem('simulatorProgress');
+    if (saved) {
+        const progress = JSON.parse(saved);
+        domainScores = progress.scores;
+        currentQuestionIndexInAllQuestions = progress.questionIndex;
+        secondsElapsed = progress.seconds;
+        progress.flagged.forEach(id => flaggedQuestions.add(id));
+        return true; 
+    }
+    return false; 
+}
+
+function formatTime(totalSeconds) {
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+}
+
+function startTimer() {
+    if (timerInterval) clearInterval(timerInterval);
+
+    timerInterval = setInterval(() => {
+        secondsElapsed++;
+        if (timerDisplay) timerDisplay.textContent = formatTime(secondsElapsed);
+    }, 1000);
+}
+
+
+/*
+ * ====================================================================
+ * | 4. ADAPTIVE DRILL ENGINE LOGIC
  * ====================================================================
  */
 
@@ -1843,7 +1891,7 @@ function processAnswer(question, choiceIndex) {
 
 /*
  * ====================================================================
- * | 4. RENDER AND EVENT LISTENERS
+ * | 5. RENDER AND EVENT LISTENERS
  * ====================================================================
  */
 
@@ -1860,12 +1908,22 @@ function renderQuestion() {
     questionText.textContent = currentQuestion.text;
     questionCounter.textContent = `Q ${currentQuestionIndexInAllQuestions + 1} / ${totalQuestions}`;
 
+    // FIX FOR ALWAYS SELECTING FIRST ANSWER: SHUFFLE CHOICES
+    let choicesWithIndex = currentQuestion.choices.map((choice, index) => ({
+        text: choice,
+        originalIndex: index
+    }));
 
-    currentQuestion.choices.forEach((choice, idx) => {
+    for (let i = choicesWithIndex.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [choicesWithIndex[i], choicesWithIndex[j]] = [choicesWithIndex[j], choicesWithIndex[i]];
+    }
+
+    choicesWithIndex.forEach((choice, idx) => {
         let btn = document.createElement('button');
         btn.type = 'button';
-        btn.textContent = choice;
-        btn.setAttribute('data-index', idx);
+        btn.textContent = choice.text;
+        btn.setAttribute('data-index', choice.originalIndex); 
         
         btn.addEventListener('click', handleAnswerClick);
         answerForm.appendChild(btn);
@@ -1887,6 +1945,7 @@ function handleAnswerClick(event) {
     Array.from(answerForm.children).forEach(btn => {
         const btnIndex = parseInt(btn.getAttribute('data-index'));
         btn.disabled = true;
+        // Check against the stored original correct index
         if (btnIndex === currentQuestion.correct) {
             btn.classList.add('correct');
         } else if (btnIndex === choiceIndex) {
@@ -1895,7 +1954,11 @@ function handleAnswerClick(event) {
     });
 
     nextButton.disabled = false;
+    saveProgress(); // Save progress after successful answer
 }
+
+// Ensure the page saves progress on refresh/close
+window.onbeforeunload = saveProgress;
 
 nextButton.addEventListener('click', () => {
     currentQuestionIndexInAllQuestions++;
@@ -1903,6 +1966,8 @@ nextButton.addEventListener('click', () => {
     if (currentQuestionIndexInAllQuestions >= totalQuestions) {
         alert('Simulation complete! Review your final scores in the console.');
         console.log("Final Domain Scores:", domainScores);
+        // Clear progress when session is finished
+        localStorage.removeItem('simulatorProgress'); 
         return;
     }
     renderQuestion();
@@ -1926,9 +1991,19 @@ explanationToggle.addEventListener('click', () => {
 
 // INIT Function: Start the simulator
 function initSimulator() {
-    // Check if the DOM elements are ready before trying to render
+    if (loadProgress()) {
+        console.log('Progress loaded successfully. Resuming session.');
+    } else {
+        uniqueDomains.forEach(domain => { 
+            domainScores[domain] = { total: 0, correct: 0, missedQueue: [], isMastered: false }; 
+        });
+        currentQuestionIndexInAllQuestions = 0;
+        secondsElapsed = 0;
+        console.log('No saved progress found. Starting new session.');
+    }
+
+    startTimer();
     if (!questionText || !answerForm) {
-        // Fallback for safety, though the issue should be resolved by embedding the script
         document.body.innerHTML = '<h1>Error: Simulator failed to load. Check console for syntax errors.</h1>';
         return;
     }
